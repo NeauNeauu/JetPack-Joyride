@@ -90,7 +90,7 @@ LASER_INTERVAL = [2000]
 # Power box management
 powerboxes = []
 powerbox_timer = [0]
-POWERBOX_INTERVAL = [10000]
+POWERBOX_INTERVAL = [20000]
 
 # Initial laser speed
 laser_speed = [5]
@@ -277,7 +277,7 @@ def update_powerups():
 
 def display_menu():
     running = True
-    start_button = Button("Start", 860, 500, 200, 100, (200, 0, 200), (200, 100, 200), "start")
+    start_button = Button("Start", 860, 500, 200, 100, (100, 255, 100), (50, 205, 50), "start")
     quit_button = Button("Quit", 860, 650, 200, 100, (165, 10, 45), (155, 0, 35), "quit")
     while running:
         screen.fill((0, 0, 0))
@@ -351,7 +351,7 @@ def display_end():
     screen.blit(score_text, (960, 500))
     score_resume = font.render("Press any key to restart", True, (200, 200, 200))
     screen.blit(score_resume, (800, 600))
-    score_resume = font.render("Press ESC to go caca to menu", True, (200, 200, 200))
+    score_resume = font.render("Press ESC to go back to menu", True, (200, 200, 200))
     screen.blit(score_resume, (800, 650))
     score_best = font.render(f"Best score: {best_score[0]}", True, (9, 200, 200))
     screen.blit(score_best, (800, 700))
