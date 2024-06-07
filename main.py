@@ -29,6 +29,9 @@ background_pause = pygame.image.load("assets/background_pause.png")
 
 # Power Box
 powerbox_sprite = pygame.image.load("assets/power_box.png")
+shield_sprite = pygame.image.load("assets/shield.png")
+scale = 1.2
+shield_sprite = pygame.transform.scale(shield_sprite, (int(shield_sprite.get_width() * scale), int(shield_sprite.get_height() * scale)))
 
 background_layers = [pygame.transform.scale(layer, (1920, 1080)) for layer in background_layers]
 background_menu = pygame.transform.scale(background_menu, (1920, 1080))
@@ -56,7 +59,7 @@ def get_frame_box(sheet, frame, y_offset):
     image.blit(sheet, (0, 0), rect)
     return image
 
-# box management
+# Box management
 frames_box = [get_frame_box(powerbox_sprite, i, 0) for i in range(NUM_BOX_FRAMES)]
 box_rect = pygame.Rect(400, 1020, BOX_SPRITE_WIDTH, BOX_SPRITE_HEIGHT)
 box_velocity = [0]
@@ -85,14 +88,20 @@ laser_timer = [0]
 LASER_INTERVAL = [2000]
 
 # Power box management
-powerbox = []
+powerboxes = []
 powerbox_timer = [0]
-POWERBOX_INTERVAL = [5000]
-is_powerbox = False
+POWERBOX_INTERVAL = [10000]
 
 # Initial laser speed
 laser_speed = [5]
 
+# Power-up management
+invincibility_duration = [0]
+slow_time_duration = [0]
+is_invincible = [False]
+is_slow_time = [False]
+
+# Score management
 score = [0]
 
 # Load best score from file
@@ -122,7 +131,6 @@ def create_laser():
     laser = pygame.transform.rotate(laser, angle)
     laser_rect = laser.get_rect(center=(x_pos, y_pos))
 
-    # Create mask for laser
     laser_mask = pygame.mask.from_surface(laser)
 
     return (laser, laser_rect, laser_mask)
@@ -130,29 +138,33 @@ def create_laser():
 def create_powerbox():
     x_pos = random.randint(1920, 3840)
     y_pos = random.randint(180, 900)
-    scale = 0.8
+    frame = random.randint(0, NUM_BOX_FRAMES - 1)
+    powerbox_image = frames_box[frame]
+    powerbox_rect = powerbox_image.get_rect(center=(x_pos, y_pos))
 
-    powerbox = pygame.transform.scale(powerbox_sprite, (int(powerbox_sprite.get_width() * scale), int(powerbox_sprite.get_height() * scale)))
-    powerbox_rect = powerbox.get_rect(center=(x_pos, y_pos))
+    powerbox_mask = pygame.mask.from_surface(powerbox_image)
 
-    # Create mask for powerbox
-    powerbox_mask = pygame.mask.from_surface(powerbox)
-
-    return (powerbox, powerbox_rect, powerbox_mask)
+    return (powerbox_image, powerbox_rect, powerbox_mask)
 
 def reset_game():
-    global player_rect, player_velocity, score, lasers, layer_speeds, laser_speed
+    global player_rect, player_velocity, score, lasers, powerboxes, layer_speeds, laser_speed, invincibility_duration, slow_time_duration, is_invincible, is_slow_time
     player_rect.topleft = (500, 1020)
     player_velocity[0] = 0
     score[0] = 0
     lasers = []
+    powerboxes = []
     layer_speeds = [4, 5, 6]
     laser_speed[0] = 5
     LASER_INTERVAL[0] = 2000
+    POWERBOX_INTERVAL[0] = 10000
     boost[0] = -10
     gravity[0] = 0.5
+    invincibility_duration[0] = 0
+    slow_time_duration[0] = 0
+    is_invincible[0] = False
+    is_slow_time[0] = False
 
-def display(player_rect, frames_ground, frames_air, background_layers, layer_positions, lasers, score):
+def display(player_rect, frames_ground, frames_air, background_layers, layer_positions, lasers, powerboxes, score):
     screen.fill((0, 0, 0))
 
     for i in range(len(background_layers)):
@@ -164,10 +176,13 @@ def display(player_rect, frames_ground, frames_air, background_layers, layer_pos
     else:
         screen.blit(frames_ground[current_frame[0]], player_rect.topleft)
 
-    if is_powerbox:
-        screen.blit(frames_box[current_box_frame[0]], box_rect.topleft)
     for laser in lasers:
         screen.blit(laser[0], laser[1].topleft)
+
+    for powerbox in powerboxes:
+        screen.blit(powerbox[0], powerbox[1].topleft)
+    if is_invincible[0]:
+        screen.blit(shield_sprite, (player_rect.x - 10, player_rect.y - 10))
 
     score_text = font.render(f'Score: {score[0]}', True, (255, 255, 255))
     screen.blit(score_text, (1600, 50))
@@ -214,32 +229,52 @@ def laser_manage():
     player_mask = pygame.mask.from_surface(frames_ground[current_frame[0]] if player_velocity[0] >= 0 and player_rect.bottom >= 1020 else frames_air[current_frame[0]])
     for laser in lasers:
         offset = (laser[1].x - player_rect.x, laser[1].y - player_rect.y)
-        if player_mask.overlap(laser[2], offset):
+        if not is_invincible[0] and player_mask.overlap(laser[2], offset):
             return True
     return False
 
-# Power box management like laser
 def powerbox_manage():
-    global is_powerbox
     powerbox_timer[0] += clock.get_time()
     if powerbox_timer[0] >= POWERBOX_INTERVAL[0]:
-        powerbox = create_powerbox()
-        is_powerbox = True
+        powerboxes.append(create_powerbox())
         powerbox_timer[0] = 0
 
-    if is_powerbox:
-        box_rect.x -= layer_speeds[0]
-        if box_rect.right < 0:
-            is_powerbox = False
-    player_mask = pygame.mask.from_surface(frames_ground[current_frame[0]] if player_velocity[0] >= 0 and player_rect.bottom >= 1020 else frames_air[current_frame[0]])
-    if is_powerbox:
-        offset = (box_rect.x - player_rect.x, box_rect.y - player_rect.y)
-        if player_mask.overlap(powerbox, offset):
-            is_powerbox = False
-            return True
-    return False
+    for powerbox in powerboxes[:]:
+        powerbox[1].x -= 4
+        if powerbox[1].right < 0:
+            powerboxes.remove(powerbox)
 
-# Function to display menu
+    player_mask = pygame.mask.from_surface(frames_ground[current_frame[0]] if player_velocity[0] >= 0 and player_rect.bottom >= 1020 else frames_air[current_frame[0]])
+    for powerbox in powerboxes:
+        offset = (powerbox[1].x - player_rect.x, powerbox[1].y - player_rect.y)
+        if player_mask.overlap(powerbox[2], offset):
+            powerboxes.remove(powerbox)
+            activate_powerup()
+
+def activate_powerup():
+    powerup_type = random.choice(["invincibility", "slow_time"])
+    if powerup_type == "invincibility":
+        invincibility_duration[0] = 3000
+        is_invincible[0] = True
+    elif powerup_type == "slow_time":
+        slow_time_duration[0] = 5000
+        is_slow_time[0] = True
+        global FPS
+        FPS = 30
+
+def update_powerups():
+    if invincibility_duration[0] > 0:
+        invincibility_duration[0] -= clock.get_time()
+        if invincibility_duration[0] <= 0:
+            is_invincible[0] = False
+
+    if slow_time_duration[0] > 0:
+        slow_time_duration[0] -= clock.get_time()
+        if slow_time_duration[0] <= 0:
+            is_slow_time[0] = False
+            global FPS
+            FPS = 60  # Restore normal game speed
+
 def display_menu():
     running = True
     start_button = Button("Start", 860, 500, 200, 100, (200, 0, 200), (200, 100, 200), "start")
@@ -275,6 +310,12 @@ def display_pause():
     else:
         screen.blit(frames_ground[current_frame[0]], player_rect.topleft)
 
+    for laser in lasers:
+        screen.blit(laser[0], laser[1].topleft)
+
+    for powerbox in powerboxes:
+        screen.blit(powerbox[0], powerbox[1].topleft)
+
     score_text = font.render(f'Score: {score[0]}', True, (255, 255, 255))
     screen.blit(score_text, (1600, 50))
     score_text = font.render("PAUSE", True, (255, 255, 255))
@@ -301,22 +342,24 @@ def display_end():
     for laser in lasers:
         screen.blit(laser[0], laser[1].topleft)
 
-    score_text = font.render(f'Score: {score[0]}', True, (255, 255, 255))
+    for powerbox in powerboxes:
+        screen.blit(powerbox[0], powerbox[1].topleft)
+
+    score_text = font.render(f'SCORE: {score[0]}', True, (255, 9, 255))
     screen.blit(score_text, (1600, 50))
     score_text = font.render("GAME OVER", True, (200, 200, 200))
     screen.blit(score_text, (960, 500))
     score_resume = font.render("Press any key to restart", True, (200, 200, 200))
     screen.blit(score_resume, (800, 600))
-    score_resume = font.render("Press ESC to go back to menu", True, (200, 200, 200))
+    score_resume = font.render("Press ESC to go caca to menu", True, (200, 200, 200))
     screen.blit(score_resume, (800, 650))
-    score_best = font.render(f"Best score: {best_score[0]}", True, (200, 200, 200))
+    score_best = font.render(f"Best score: {best_score[0]}", True, (9, 200, 200))
     screen.blit(score_best, (800, 700))
     screen.blit(background_pause, (0, 0))
 
     pygame.display.flip()
     clock.tick(FPS)
 
-# Main game loop
 def game_loop():
     running = 1
     state = 0
@@ -372,6 +415,12 @@ def game_loop():
                 save_best_score(best_score[0])
             state = 2
 
+        # Manage powerboxes
+        powerbox_manage()
+
+        # Update power-up effects
+        update_powerups()
+
         # Increase background laser player speed every 200 points
         if score[0] % 150 == 0:
             for i in range(len(layer_speeds)):
@@ -381,16 +430,8 @@ def game_loop():
             gravity[0] += 0.01
             boost[0] -= 0.015
 
-        # Power box management
-        frame_box_count[0] += 1
-        if frame_box_count[0] >= 20:
-            current_box_frame[0] = (current_box_frame[0] + 1) % NUM_BOX_FRAMES
-            frame_box_count[0] = 0
-        if powerbox_manage():
-            score[0] += 100
-    
         # Display the game
-        display(player_rect, frames_ground, frames_air, background_layers, layer_positions, lasers, score)
+        display(player_rect, frames_ground, frames_air, background_layers, layer_positions, lasers, powerboxes, score)
     return running
 
 def main():
