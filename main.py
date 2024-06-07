@@ -217,6 +217,31 @@ def display_pause():
     clock.tick(FPS)
 
 
+def display_end():
+    screen.fill((0, 0, 0))
+
+    for i in range(len(background_layers)):
+        screen.blit(background_layers[i], (layer_positions[i], 0))
+        screen.blit(background_layers[i], (layer_positions[i] + 1920, 0))
+    
+    if player_velocity[0] < 0 or player_rect.bottom < 1020:
+        screen.blit(frames_air[current_frame[0]], player_rect.topleft)
+    else:
+        screen.blit(frames_ground[current_frame[0]], player_rect.topleft)
+
+    for laser in lasers:
+        screen.blit(laser[0], laser[1].topleft)
+
+    score_text = font.render(f'Score: {score[0]}', True, (255, 255, 255))
+    screen.blit(score_text, (1600, 50))
+    score_text = font.render("GAME OVER", True, (255, 255, 255))
+    screen.blit(score_text, (960, 500))
+    score_resume = font.render("Press any key to restart", True, (255, 255, 255))
+    screen.blit(score_resume, (800, 600))
+
+    pygame.display.flip()
+    clock.tick(FPS)
+
 # Main game loop
 def game_loop():
     running = 1
