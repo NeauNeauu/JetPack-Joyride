@@ -9,6 +9,7 @@ import pygame
 import sys
 import random
 
+# Initialize Pygame
 pygame.init()
 
 screen = pygame.display.set_mode((1920, 1080))
@@ -37,11 +38,11 @@ frames_ground = [get_frame(player_sprite, i, 0) for i in range(NUM_FRAMES)]
 frames_air = [get_frame(player_sprite, i, SPRITE_HEIGHT) for i in range(NUM_FRAMES)]
 
 player_rect = pygame.Rect(500, 1020, SPRITE_WIDTH, SPRITE_HEIGHT)
-gravity = 0.5
-boost = -10
-player_velocity = 0
-current_frame = 0
-frame_count = 0
+gravity = [0.5]
+boost = [-10]
+player_velocity = [0]
+current_frame = [0]
+frame_count = [0]
 
 background_layers = [pygame.transform.scale(layer, (1920, 1080)) for layer in background_layers]
 
@@ -53,11 +54,11 @@ clock = pygame.time.Clock()
 FPS = 60
 
 lasers = []
-laser_timer = 0
-LASER_INTERVAL = 2000
+laser_timer = [0]
+LASER_INTERVAL = [2000]
 
 # Initial laser speed
-laser_speed = 5
+laser_speed = [5]
 
 score = [0]
 font = pygame.font.Font("assets/font.ttf", 40)
@@ -80,12 +81,12 @@ def create_laser():
 def reset_game():
     global player_rect, player_velocity, score, lasers, layer_speeds, laser_speed
     player_rect.topleft = (500, 1020)
-    player_velocity = 0
+    player_velocity[0] = 0
     score[0] = 0
     lasers = []
     layer_speeds = [4, 5, 6]
-    laser_speed = 5
-    LASER_INTERVAL = 2000
+    laser_speed[0] = 5
+    LASER_INTERVAL[0] = 2000
 
 def display(player_rect, frames_ground, frames_air, background_layers, layer_positions, lasers, score):
     screen.fill((0, 0, 0))
@@ -94,10 +95,10 @@ def display(player_rect, frames_ground, frames_air, background_layers, layer_pos
         screen.blit(background_layers[i], (layer_positions[i], 0))
         screen.blit(background_layers[i], (layer_positions[i] + 1920, 0))
     
-    if player_velocity < 0 or player_rect.bottom < 1020:
-        screen.blit(frames_air[current_frame], player_rect.topleft)
+    if player_velocity[0] < 0 or player_rect.bottom < 1020:
+        screen.blit(frames_air[current_frame[0]], player_rect.topleft)
     else:
-        screen.blit(frames_ground[current_frame], player_rect.topleft)
+        screen.blit(frames_ground[current_frame[0]], player_rect.topleft)
 
     for laser in lasers:
         screen.blit(laser[0], laser[1].topleft)
@@ -128,95 +129,97 @@ class Button:
         text_rect = text_surface.get_rect(center=(self.x + self.width / 2, self.y + self.height / 2))
         screen.blit(text_surface, text_rect)
 
-# Function to display menu
-def display_menu():
-    screen.fill((0, 0, 0))
-    title_text = font.render("JETPACK JOYRIDE", True, (255, 255, 255))
-    screen.blit(title_text, (800, 200))
-
-    play_button.draw(screen)
-    exit_button.draw(screen)
-
-    # Initialize buttons
-    play_button = Button("Play", 800, 400, 200, 50, (0, 100, 0), (0, 200, 0), "play")
-    exit_button = Button("Exit", 800, 500, 200, 50, (100, 0, 0), (200, 0, 0), "exit")
-
-    # Main game loop
-    menu_active = True
-    while menu_active:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
-                if play_button.x < mouse_pos[0] < play_button.x + play_button.width and play_button.y < mouse_pos[1] < play_button.y + play_button.height:
-                    menu_active = False
-                    # Start game
-                elif exit_button.x < mouse_pos[0] < exit_button.x + exit_button.width and exit_button.y < mouse_pos[1] < exit_button.y + exit_button.height:
-                    pygame.quit()
-                    sys.exit()
-    
-    display_menu()
-    pygame.display.flip()
-
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-    
-    # Player management
-    keys = pygame.key.get_pressed()
-    
-    if keys[pygame.K_UP] or keys[pygame.K_SPACE]:
-        player_velocity = boost
-    
-    player_velocity += gravity
-    player_rect.y += player_velocity
-    
-    if player_rect.top < 0:
-        player_rect.top = 0
-        player_velocity = 0
-    if player_rect.bottom > 1020:
-        player_rect.bottom = 1020
-        player_velocity = 0
-    
-    frame_count += 1
-    if frame_count >= 10:
-        current_frame = (current_frame + 1) % NUM_FRAMES
-        frame_count = 0
-    
+def laser_manage():
     for i in range(len(background_layers)):
         layer_positions[i] -= layer_speeds[i]
         if layer_positions[i] <= -1920:
             layer_positions[i] = 0
 
-    laser_timer += clock.get_time()
-    if laser_timer >= LASER_INTERVAL:
+    laser_timer[0] += clock.get_time()
+    if laser_timer[0] >= LASER_INTERVAL[0]:
         lasers.append(create_laser())
-        laser_timer = 0
+        laser_timer[0] = 0
 
     for laser in lasers[:]:
-        laser[1].x -= laser_speed  # Use laser speed here
+        laser[1].x -= laser_speed[0]  # Use laser speed here
         if laser[1].right < 0:
             lasers.remove(laser)
-
-    player_mask = pygame.mask.from_surface(frames_ground[current_frame] if player_velocity >= 0 and player_rect.bottom >= 1020 else frames_air[current_frame])
+    player_mask = pygame.mask.from_surface(frames_ground[current_frame[0]] if player_velocity[0] >= 0 and player_rect.bottom >= 1020 else frames_air[current_frame[0]])
     for laser in lasers:
         offset = (laser[1].x - player_rect.x, laser[1].y - player_rect.y)
         if player_mask.overlap(laser[2], offset):
             reset_game()
 
-    score[0] += 1
+# Function to display menu
+def display_menu():
+    running = True
+    start_button = Button("Start", 860, 500, 200, 100, (0, 0, 255), (0, 0, 200), "start")
+    quit_button = Button("Quit", 860, 650, 200, 100, (255, 0, 0), (200, 0, 0), "quit")
+    while running:
+        screen.fill((0, 0, 0))
+        start_button.draw(screen)
+        quit_button.draw(screen)
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                if start_button.x < mouse_pos[0] < start_button.x + start_button.width and start_button.y < mouse_pos[1] < start_button.y + start_button.height:
+                    running = False
+                if quit_button.x < mouse_pos[0] < quit_button.x + quit_button.width and quit_button.y < mouse_pos[1] < quit_button.y + quit_button.height:
+                    pygame.quit()
+                    sys.exit()
+# Main game loop
+def game_loop():
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        
+        # Player management
+        keys = pygame.key.get_pressed()
+        
+        if keys[pygame.K_UP] or keys[pygame.K_SPACE]:
+            player_velocity[0] = boost[0]
+        
+        player_velocity[0] += gravity[0]
+        player_rect.y += player_velocity[0]
+        
+        if player_rect.top < 0:
+            player_rect.top = 0
+            player_velocity[0] = 0
+        if player_rect.bottom > 1020:
+            player_rect.bottom = 1020
+            player_velocity[0] = 0
+        
+        frame_count[0] += 1
+        if frame_count[0] >= 10:
+            current_frame[0] = (current_frame[0] + 1) % NUM_FRAMES
+            frame_count[0] = 0
+        
+        laser_manage()
 
-    # Increase background speed every 200 points
-    if score[0] % 300 == 0:
-        layer_speeds = [speed + 1 for speed in layer_speeds]
-        laser_speed += 1
-        LASER_INTERVAL -= 100
+        score[0] += 1
 
-    display(player_rect, frames_ground, frames_air, background_layers, layer_positions, lasers, score)
+        # Increase background laser player speed every 200 points
+        if score[0] % 150 == 0:
+            for i in range(len(layer_speeds)):
+                layer_speeds[i] += 0.5
+            laser_speed[0] += 0.5
+            LASER_INTERVAL[0] -= 40
+            gravity[0] += 0.0075
+            boost[0] -= 0.0075
 
-pygame.quit()
-sys.exit()
+        # Display the game
+        display(player_rect, frames_ground, frames_air, background_layers, layer_positions, lasers, score)
+
+def main():
+    display_menu()
+    game_loop()
+    pygame.quit()
+    sys.exit()
+
+if __name__ == "__main__":
+    main()
