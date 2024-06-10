@@ -17,6 +17,13 @@ pygame.display.set_caption("Jetpack Joyride")
 
 player_sprite = pygame.image.load("assets/player.png")
 
+# Initialize Pygame mixer
+pygame.mixer.init()
+
+# Load sounds
+jetpack_sound = pygame.mixer.Sound("assets/jetpack_sound.wav")
+death_sound = pygame.mixer.Sound("assets/death_sound.wav")
+
 # Background layers
 background_layers = [
     pygame.image.load("assets/background.jpg"),
@@ -230,6 +237,7 @@ def laser_manage():
     for laser in lasers:
         offset = (laser[1].x - player_rect.x, laser[1].y - player_rect.y)
         if not is_invincible[0] and player_mask.overlap(laser[2], offset):
+            death_sound.play()
             return True
     return False
 
@@ -390,7 +398,11 @@ def game_loop():
             display_end()
             continue
         if keys[pygame.K_UP] or keys[pygame.K_SPACE]:
+            if not pygame.mixer.get_busy():
+                jetpack_sound.play()
             player_velocity[0] = boost[0]
+        else:
+            jetpack_sound.stop()
         
         player_velocity[0] += gravity[0]
         player_rect.y += player_velocity[0]
@@ -421,7 +433,6 @@ def game_loop():
         # Update power-up effects
         update_powerups()
 
-        # Increase background laser player speed every 200 points
         if score[0] % 150 == 0:
             for i in range(len(layer_speeds)):
                 layer_speeds[i] += 0.5
